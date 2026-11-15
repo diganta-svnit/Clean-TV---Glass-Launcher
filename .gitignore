@@ -1,0 +1,20 @@
+# Your own settings and key: never committed.
+tmdb_key.txt
+glass.properties
+
+# Build output
+launcher/.gradle/
+launcher/build/
+launcher/app/build/
+launcher/local.properties
+*.apk
+*.aab
+
+# Per-TV working files: dumps, screenshots and ADB keys stay on your computer.
+backup/
+shots/
+cleanyourtv/
+wallpapers/tv/
+wallpapers/*.mp4
+wallpapers/*.mov
+.DS_Store

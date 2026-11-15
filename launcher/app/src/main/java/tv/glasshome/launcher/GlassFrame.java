@@ -1,0 +1,163 @@
+package tv.glasshome.launcher;
+
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapShader;
+import android.graphics.Canvas;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.LinearGradient;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.Shader;
+import android.widget.FrameLayout;
+
+/**
+ * A pane of frosted glass. It paints the blurred wallpaper that lies under its current position on screen,
+ * so it stays correct while it moves, then a white veil, a top sheen and a thin bright rim.
+ *
+ * The blurred wallpaper is one small shared bitmap (made once per wallpaper), scaled up by the GPU.
+ * Nothing is blurred per frame.
+ */
+public class GlassFrame extends FrameLayout {
+
+    private static Bitmap blur;
+    private static int screenW = 1, screenH = 1;
+    private static int generation;
+
+    /** Sets the blurred wallpaper every pane samples from; null falls back to a plain smoked fill. */
+    static void setBlur(Bitmap b, int w, int h) {
+        blur = b;
+        screenW = w;
+        screenH = h;
+        generation++;
+    }
+
+    private final Paint glass = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Paint veil = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint smoke = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint layer = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Matrix matrix = new Matrix();
+    private final RectF rect = new RectF();
+    private final RectF tmp = new RectF();
+    private final int[] loc = new int[2];
+    private final float dp;
+    private int shaderGen = -1;
+    private float radius;
+    private float insetTop;
+    private float gradTop = -1, gradBottom = -1;
+    private int stackLayers;
+    private boolean showRing = true;
+
+    public GlassFrame(Context c) {
+        super(c);
+        dp = getResources().getDisplayMetrics().density;
+        radius = 26 * dp;
+        setWillNotDraw(false);
+        setClipChildren(false);
+        setClipToPadding(false);
+        rim.setStyle(Paint.Style.STROKE);
+        rim.setStrokeWidth(1.2f * dp);
+        rim.setColor(0x66FFFFFF);
+        ring.setStyle(Paint.Style.STROKE);
+        ring.setStrokeWidth(2.5f * dp);
+        ring.setColor(0xF2FFFFFF);
+        smoke.setColor(0x59283040);
+        layer.setColor(0x1FFFFFFF);
+        // Apple-style vibrancy: the frosted backdrop is a little more saturated and lighter than the wallpaper.
+        ColorMatrix sat = new ColorMatrix();
+        sat.setSaturation(1.5f);
+        ColorMatrix lift = new ColorMatrix(new float[]{
+                0.92f, 0, 0, 0, 14,
+                0, 0.92f, 0, 0, 14,
+                0, 0, 0.92f, 0, 14,
+                0, 0, 0, 1, 0});
+        sat.postConcat(lift);
+        glass.setColorFilter(new ColorMatrixColorFilter(sat));
+    }
+
+    void setRadius(float px) {
+        radius = px;
+        invalidate();
+    }
+
+    /** Draws the glass only from this many pixels below the top: lets a pane grow and shrink without relayout. */
+    void setInsetTop(float px) {
+        insetTop = px;
+        invalidate();
+    }
+
+    float getInsetTop() {
+        return insetTop;
+    }
+
+    /** Collapsed-stack look: this many thinner cards peeking out above the top edge. */
+    void setStackLayers(int n) {
+        stackLayers = n;
+        invalidate();
+    }
+
+    void setShowRing(boolean show) {
+        showRing = show;
+    }
+
+    @Override
+    protected void onFocusChanged(boolean gained, int direction, Rect previous) {
+        super.onFocusChanged(gained, direction, previous);
+        float s = gained ? 1.04f : 1f;
+        animate().scaleX(s).scaleY(s).setDuration(160).setUpdateListener(a -> invalidate()).start();
+        invalidate();
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        rect.set(0, insetTop, getWidth(), getHeight());
+        if (rect.height() <= 1) return;
+
+        for (int i = stackLayers; i >= 1; i--) {
+            float inset = 18 * dp * i, lift = 8 * dp * i;
+            tmp.set(rect.left + inset, rect.top - lift, rect.right - inset, rect.top - lift + radius * 2);
+            canvas.drawRoundRect(tmp, radius, radius, layer);
+            canvas.drawRoundRect(tmp, radius, radius, rim);
+        }
+
+        if (blur != null) {
+            if (shaderGen != generation) {
+                glass.setShader(new BitmapShader(blur, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP));
+                shaderGen = generation;
+            }
+            // Where this pane is on screen right now (translation and scale included), mapped back into the
+            // small blurred bitmap. The launcher window is full screen, so window = screen coordinates.
+            getLocationInWindow(loc);
+            float s = getScaleX();
+            float bx = screenW / (float) blur.getWidth(), by = screenH / (float) blur.getHeight();
+            matrix.setScale(bx / s, by / getScaleY());
+            matrix.postTranslate(-loc[0] / s, -loc[1] / getScaleY());
+            glass.getShader().setLocalMatrix(matrix);
+            canvas.drawRoundRect(rect, radius, radius, glass);
+        } else {
+            canvas.drawRoundRect(rect, radius, radius, smoke);
+        }
+
+        if (gradTop != rect.top || gradBottom != rect.bottom) {
+            gradTop = rect.top;
+            gradBottom = rect.bottom;
+            veil.setShader(new LinearGradient(0, rect.top, 0, rect.bottom, 0x33FFFFFF, 0x12FFFFFF, Shader.TileMode.CLAMP));
+            sheen.setShader(new LinearGradient(0, rect.top, 0, rect.top + Math.min(rect.height() * 0.5f, 60 * dp),
+                    0x38FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+        }
+        canvas.drawRoundRect(rect, radius, radius, veil);
+        canvas.drawRoundRect(rect, radius, radius, sheen);
+        canvas.drawRoundRect(rect, radius, radius, rim);
+        if (showRing && isFocused()) {
+            float h = ring.getStrokeWidth() / 2;
+            tmp.set(rect.left + h, rect.top + h, rect.right - h, rect.bottom - h);
+            canvas.drawRoundRect(tmp, radius - h, radius - h, ring);
+        }
+    }
+}

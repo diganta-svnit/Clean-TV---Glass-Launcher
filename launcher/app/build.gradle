@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'tv.glasshome.launcher'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'tv.glasshome.launcher'
+        minSdk 26
+        targetSdk 34
+        versionCode 5
+        versionName '0.5'
+        // TMDB read token from tmdb_key.txt next to this folder (never committed). Empty: Trending says a key is missing.
+        def keyFile = rootProject.file('../tmdb_key.txt')
+        def key = keyFile.exists() ? keyFile.text.trim() : ''
+        buildConfigField 'String', 'TMDB_TOKEN', '"' + key + '"'
+
+        // This TV's settings from glass.properties next to this folder (copy glass.properties.example).
+        def cfg = new Properties()
+        def cfgFile = rootProject.file('../glass.properties')
+        if (cfgFile.exists()) cfgFile.withReader('UTF-8') { cfg.load(it) }
+        def str = { String k, String d -> (cfg.getProperty(k, d) ?: d).trim().replace('\\', '').replace('"', '') }
+        def num = { String k -> str(k, '0') as double }
+        buildConfigField 'String', 'CITY_NAME', '"' + str('city', '') + '"'
+        buildConfigField 'double', 'CITY_LAT', num('latitude').toString()
+        buildConfigField 'double', 'CITY_LON', num('longitude').toString()
+        buildConfigField 'String', 'REGION', '"' + str('region', 'US').toUpperCase() + '"'
+        buildConfigField 'String', 'LANGUAGE', '"' + str('language', '') + '"'
+        buildConfigField 'String', 'DOCK', '"' + str('tray', 'com.netflix.ninja,com.amazon.amazonvideo.livingroom,' +
+                'com.google.android.youtube.tv,com.disney.disneyplus,com.apple.atve.androidtv.appletv')
+                .split(',').collect { it.trim() }.findAll { it }.join(',') + '"'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Sideloaded over ADB, never published.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

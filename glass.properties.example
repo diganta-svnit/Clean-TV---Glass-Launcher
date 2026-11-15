@@ -1,0 +1,18 @@
+# Glass Home settings for one TV. Copy to glass.properties (next to this file) and edit; it is never committed.
+# The launcher reads these at build time. City and language can be changed later in the launcher's Settings.
+
+# Weather city: name as shown at the top right, and its coordinates (decimal degrees).
+city=London
+latitude=51.5072
+longitude=-0.1276
+
+# Two-letter country code for TMDB "where to watch" (Trending only lists titles on apps available there).
+region=GB
+
+# Trending language: empty for all languages, or a code: en hi es fr de it pt ja ko zh ar tr ta te kn ml bn mr
+language=
+
+# The first tray tiles, in order: package names, comma-separated (up to 6; missing apps are skipped).
+# Netflix's TV app is com.netflix.ninja; YouTube is com.google.android.youtube.tv;
+# Prime Video is com.amazon.amazonvideo.livingroom; Disney+ is com.disney.disneyplus.
+tray=com.netflix.ninja,com.amazon.amazonvideo.livingroom,com.google.android.youtube.tv,com.disney.disneyplus,com.apple.atve.androidtv.appletv
