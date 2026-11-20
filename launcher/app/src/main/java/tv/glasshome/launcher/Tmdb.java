@@ -102,9 +102,10 @@ final class Tmdb {
         // Few new series in this language: allow older shows that are still airing.
         if (series.size() < 4) series = parse(get("/discover/tv?air_date.gte=" + tvSince + common), true);
         List<Item> out = new ArrayList<>();
-        for (int i = 0; out.size() < 20 && (i < movies.size() || i < series.size()); i++) {
+        // Up to 12 of each (the launcher shows films and series as two rows), alternating for the short list.
+        for (int i = 0; i < 12 && (i < movies.size() || i < series.size()); i++) {
             if (i < movies.size()) out.add(movies.get(i));
-            if (i < series.size() && out.size() < 20) out.add(series.get(i));
+            if (i < series.size()) out.add(series.get(i));
         }
         return out;
     }

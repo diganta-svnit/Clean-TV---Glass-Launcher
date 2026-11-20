@@ -149,6 +149,10 @@ public class MainActivity extends Activity {
     private final List<View> listRows = new ArrayList<>();
     private TextView detTitle, detMeta, detOverview;
     private int lastCard;
+    /** Trending's two rows: where the series row starts in cards (-1: one row), and each row's last focus. */
+    private int rowSplit = -1;
+    private final int[] rowLast = new int[2];
+    private List<Tmdb.Item> shownTrending = new ArrayList<>();
     private GlassFrame allPanel;
     private GridLayout allGrid;
     private final List<AppTile> allTiles = new ArrayList<>();
@@ -972,12 +976,20 @@ public class MainActivity extends Activity {
                 if (up && i > 0) menuRows.get(i - 1).requestFocus();
                 else if (down && i < menuRows.size() - 1) menuRows.get(i + 1).requestFocus();
                 break;
-            case G_CARD:
-                if (left && i > 0) cards.get(i - 1).requestFocus();
-                else if (right && i < cards.size() - 1) cards.get(i + 1).requestFocus();
+            case G_CARD: {
+                // Trending has two rows (films, series) when rowSplit > 0; Continue watching has one.
+                int split = rowSplit > 0 && rowSplit < cards.size() ? rowSplit : cards.size();
+                boolean second = i >= split;
+                int start = second ? split : 0, end = second ? cards.size() - 1 : split - 1;
+                if (left && i > start) cards.get(i - 1).requestFocus();
+                else if (right && i < end) cards.get(i + 1).requestFocus();
                 else if (right && !listRows.isEmpty()) listRows.get(0).requestFocus();
+                else if (down && !second && split < cards.size())
+                    cards.get(Math.max(split, Math.min(rowLast[1], cards.size() - 1))).requestFocus();
+                else if (up && second) cards.get(Math.min(rowLast[0], split - 1)).requestFocus();
                 else if (up) closeExpanded();
                 break;
+            }
             case G_LIST:
                 if (up && i > 0) listRows.get(i - 1).requestFocus();
                 else if (up) closeExpanded();
@@ -1550,7 +1562,11 @@ public class MainActivity extends Activity {
         }
         Tmdb.Item top = trending.get(0);
         trendTop.setText(top.title);
-        trendMeta.setText(top.meta() + "\n" + LANG_NAMES[langIndex] + "  ·  " + trending.size() + " titles");
+        int nSeries = 0;
+        for (Tmdb.Item it : trending) if (it.tv) nSeries++;
+        int nFilms = trending.size() - nSeries;
+        trendMeta.setText(top.meta() + "\n" + LANG_NAMES[langIndex] + "  ·  " + nFilms + (nFilms == 1 ? " film" : " films")
+                + "  ·  " + nSeries + " series");
         for (int k = 0; k < 3; k++) {
             if (k < trending.size()) images.load(Tmdb.IMG + "w185" + trending.get(k == 1 ? 0 : k == 0 ? 1 : 2).poster, fan[k]);
         }
@@ -1587,6 +1603,7 @@ public class MainActivity extends Activity {
         narrow.removeAllViews();
         cards.clear();
         listRows.clear();
+        rowSplit = -1;
         lastCard = Math.min(lastCard, Math.max(0, trending.size() - 1));
         if (expanded == 0) {
             fillTrendingWide();
@@ -1601,68 +1618,116 @@ public class MainActivity extends Activity {
     private void fillTrendingWide() {
         TextView head = text(14, 0xCCFFFFFF, "sans-serif-medium");
         head.setText("Trending  ·  " + LANG_NAMES[langIndex]);
-        wide.addView(head, lp(-2, -2, Gravity.TOP | Gravity.START, 26, 20, 0, 0));
-        detTitle = text(24, 0xFFFFFFFF, "sans-serif-medium");
+        wide.addView(head, lp(-2, -2, Gravity.TOP | Gravity.START, 26, 16, 0, 0));
+        detTitle = text(22, 0xFFFFFFFF, "sans-serif-medium");
         detTitle.setSingleLine(true);
         detTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        wide.addView(detTitle, lp(-1, -2, Gravity.TOP | Gravity.START, 26, 46, 26, 0));
+        wide.addView(detTitle, lp(-1, -2, Gravity.TOP | Gravity.START, 26, 38, 26, 0));
         detMeta = text(13, 0xCCFFFFFF, "sans-serif");
-        wide.addView(detMeta, lp(-1, -2, Gravity.TOP | Gravity.START, 26, 80, 26, 0));
+        wide.addView(detMeta, lp(-1, -2, Gravity.TOP | Gravity.START, 26, 70, 26, 0));
         detOverview = text(13, 0xE6FFFFFF, "sans-serif");
         detOverview.setMaxLines(3);
         detOverview.setEllipsize(android.text.TextUtils.TruncateAt.END);
         detOverview.setLineSpacing(px(2), 1f);
-        wide.addView(detOverview, lp(-1, -2, Gravity.TOP | Gravity.START, 26, 104, 26, 0));
+        wide.addView(detOverview, lp(-1, -2, Gravity.TOP | Gravity.START, 26, 92, 26, 0));
         if (trending.isEmpty()) {
             detTitle.setText(trendingStatus == null ? "Loading…" : trendingStatus);
             return;
         }
+        // Two rows: films, then series (each row only if it has titles). Cards are one list, films first.
+        detOverview.setMaxLines(2);
+        List<Tmdb.Item> films = new ArrayList<>(), series = new ArrayList<>();
+        for (Tmdb.Item it : trending) (it.tv ? series : films).add(it);
+        shownTrending = new ArrayList<>(films);
+        shownTrending.addAll(series);
+        rowSplit = films.isEmpty() || series.isEmpty() ? -1 : films.size();
+        rowLast[0] = 0;
+        rowLast[1] = Math.max(0, rowSplit);
+        LinearLayout rows = new LinearLayout(this);
+        rows.setOrientation(LinearLayout.VERTICAL);
+        rows.setClipChildren(false);
+        if (!films.isEmpty()) rows.addView(posterRow("Films", films, 0));
+        if (!series.isEmpty()) rows.addView(posterRow("Series", series, films.size()));
+        wide.addView(rows, lp(-1, -2, Gravity.BOTTOM, 0, 0, 0, 8));
+        showDetails(shownTrending.get(Math.min(lastCard, shownTrending.size() - 1)));
+    }
+
+    /** One labelled, scrolling row of posters; card numbers start at first (an index into cards). */
+    private View posterRow(String label, List<Tmdb.Item> items, int first) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setClipChildren(false);
+        TextView head = text(13, 0xB3FFFFFF, "sans-serif-medium");
+        head.setText(label + "  ·  " + items.size());
+        LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(-2, -2);
+        hl.setMarginStart(px(26));
+        box.addView(head, hl);
         android.widget.HorizontalScrollView scroll = new android.widget.HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(false);
         // Clip the row to the panel (it scrolls), but let the focused poster grow into the padding.
         scroll.setClipChildren(true);
         scroll.setClipToPadding(false);
-        scroll.setPadding(px(26), px(14), px(26), px(14));
+        scroll.setPadding(px(26), px(7), px(26), px(10));
         scroll.setSmoothScrollingEnabled(true);
         // The scroll keeps the focused poster this far from the edge (fading edge length), with a soft fade.
         scroll.setHorizontalFadingEdgeEnabled(true);
         scroll.setFadingEdgeLength(px(48));
         LinearLayout row = new LinearLayout(this);
         row.setClipChildren(false);
-        for (int i = 0; i < trending.size(); i++) {
-            Tmdb.Item it = trending.get(i);
+        int rowNo = first == 0 ? 0 : 1;
+        for (int k = 0; k < items.size(); k++) {
+            Tmdb.Item it = items.get(k);
+            int idx = first + k;
             FrameLayout card = new FrameLayout(this);
             card.setFocusable(true);
             card.setClickable(true);
-            card.setTag(new int[]{G_CARD, i});
-            ImageView img = posterView(12);
+            card.setTag(new int[]{G_CARD, idx});
+            // Landscape card, like Continue watching: the title's still (backdrop) with its name on a shade.
+            card.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override
+                public void getOutline(View v, android.graphics.Outline o) {
+                    o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), px(10));
+                }
+            });
+            card.setClipToOutline(true);
+            ImageView img = posterView(10);
             card.addView(img, new FrameLayout.LayoutParams(-1, -1));
+            boolean still = it.backdrop != null && !it.backdrop.isEmpty() && !"null".equals(it.backdrop);
+            images.load(Tmdb.IMG + (still ? "w300" + it.backdrop : "w185" + it.poster), img);
+            View shade = new View(this);
+            shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP,
+                    new int[]{0xCC000000, 0x00000000}));
+            card.addView(shade, new FrameLayout.LayoutParams(-1, px(46), Gravity.BOTTOM));
+            TextView name = text(12, 0xFFFFFFFF, "sans-serif-medium");
+            name.setText(it.title);
+            name.setSingleLine(true);
+            name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            card.addView(name, lp(-1, -2, Gravity.BOTTOM, 9, 0, 9, 6));
             GradientDrawable ring = new GradientDrawable();
-            ring.setCornerRadius(px(12));
+            ring.setCornerRadius(px(10));
             ring.setStroke(px(2.5f), 0xFFFFFFFF);
             StateListDrawable fg = new StateListDrawable();
             fg.addState(new int[]{android.R.attr.state_focused}, ring);
             fg.addState(new int[]{}, new GradientDrawable());
             card.setForeground(fg);
-            images.load(Tmdb.IMG + "w342" + it.poster, img);
-            int idx = i;
             card.setOnFocusChangeListener((v, has) -> {
-                float sc = has ? 1.1f : 1f;
+                float sc = has ? 1.08f : 1f;
                 v.animate().scaleX(sc).scaleY(sc).translationZ(has ? px(10) : 0).setDuration(150).start();
                 if (has) {
                     lastCard = idx;
+                    rowLast[rowNo] = idx;
                     showDetails(it);
                 }
             });
             card.setOnClickListener(v -> openTitle(it, v));
-            LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(px(118), px(177));
-            if (i > 0) l.setMarginStart(px(16));
+            LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(px(168), px(95));
+            if (k > 0) l.setMarginStart(px(14));
             row.addView(card, l);
             cards.add(card);
         }
         scroll.addView(row);
-        wide.addView(clipBox(scroll), lp(-1, -2, Gravity.BOTTOM, 0, 0, 0, 14));
-        showDetails(trending.get(Math.min(lastCard, trending.size() - 1)));
+        box.addView(clipBox(scroll), new LinearLayout.LayoutParams(-1, -2));
+        return box;
     }
 
     private void showDetails(Tmdb.Item it) {

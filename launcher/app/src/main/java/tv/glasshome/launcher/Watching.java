@@ -21,6 +21,7 @@ import java.util.Set;
 
 /**
  * Continue watching, from what this TV can actually see, newest first:
+ * 0. Android's Watch Next list (YouTube, Apple TV, Prime Video, JioHotstar...): title, picture, progress, exact link;
  * 1. titles that were playing (MediaListener's history: real names, pictures and progress; reopens the app);
  * 2. "Continue Watching" cards an app puts in its own home-screen row (Netflix): open the exact episode;
  * 3. video apps used recently that neither of the above covers: reopen the app.
@@ -55,6 +56,9 @@ final class Watching {
     private static final String[] MUSIC = {"spotify", "music", "saavn", "gaana", "wynk", "radio", "podcast"};
     private static final long RECENT_APP_DAYS = 14;
     private static final int MAX = 7;
+    /** Watch Next: at most this many per app, so one app can't fill the row, and nothing older than this. */
+    private static final int PER_APP = 3;
+    private static final long WATCH_NEXT_DAYS = 90;
 
     private Watching() {
     }
@@ -72,6 +76,38 @@ final class Watching {
         List<Item> out = new ArrayList<>();
         Set<String> titles = new HashSet<>();
         Set<String> covered = new HashSet<>();
+
+        // 0. Android's Watch Next list: apps (YouTube, Apple TV, Prime Video, JioHotstar, Sony LIV...) put what you
+        //    are part-way through there, with a picture, progress and a link to the exact title.
+        Map<String, Integer> perApp = new HashMap<>();
+        long oldest = System.currentTimeMillis() - WATCH_NEXT_DAYS * 24 * 3600 * 1000L;
+        for (WatchNext.Entry e : WatchNext.read(c)) {
+            Apps.Entry app = byPkg.get(e.pkg);
+            if (app == null || e.title == null || !e.browsable || isMusic(app.label)) continue;
+            boolean cont = e.type == TvContract.WatchNextPrograms.WATCH_NEXT_TYPE_CONTINUE;
+            boolean next = e.type == TvContract.WatchNextPrograms.WATCH_NEXT_TYPE_NEXT;
+            if (!cont && !next) continue; // "new" and watch-list entries are suggestions, not something started
+            if (cont && e.duration > 0 && e.position >= e.duration * 0.95) continue; // finished
+            if (e.lastEngaged < oldest || perApp.getOrDefault(e.pkg, 0) >= PER_APP) continue;
+            Item it = new Item();
+            it.pkg = app.pkg;
+            it.app = app;
+            it.appLabel = app.label;
+            it.title = e.title;
+            String ep = e.season > 0 && e.number > 0 ? "S" + e.season + " E" + e.number : e.number > 0 ? "Episode " + e.number : "";
+            if (e.episode != null && !e.episode.isEmpty()) ep = ep.isEmpty() ? e.episode : ep + "  ·  " + e.episode;
+            it.subtitle = next ? (ep.isEmpty() ? "Next episode" : "Next: " + ep) : ep;
+            it.image = e.poster;
+            it.time = e.lastEngaged;
+            it.pos = cont ? e.position : 0;
+            it.dur = e.duration;
+            it.open = parse(e.intentUri, app.launch);
+            if (titles.add(key(it.title))) {
+                out.add(it);
+                covered.add(it.pkg);
+                perApp.merge(e.pkg, 1, Integer::sum);
+            }
+        }
 
         // 1. What was playing.
         JSONArray h = MediaListener.load(c);

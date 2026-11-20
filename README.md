@@ -16,7 +16,7 @@ behind them, your streaming apps one press away, and what's trending on the apps
   Settings with a search.
 - **Tray.** Your six main apps and All apps. Press Down for seven more, picked by how much you use them.
 - **Trending.** Popular films and series on the streaming apps installed on your TV, from TMDB, optionally in
-  one language. Select a title for where to watch it and its trailer.
+  one language, as a Films row and a Series row. Select a title for where to watch it and its trailer.
 - **Continue watching.** Netflix's own "continue watching" card (the exact episode), what was last playing,
   and the video apps you used recently.
 - **Hold OK on any app** for Open, Uninstall and App info.
