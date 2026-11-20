@@ -110,6 +110,13 @@ size`; use the override when there is one. Width 1920 or more: the 1080p pack. O
 panel usually reports 1920×1080 here, because Android TV draws its home screen at 1080p; the 1080p pack is the
 sharpest the launcher can show on it, and 4K clips would only cost decoding power.
 
+**Budget TVs keep the 720p pack**, whatever their screen size. Use the 720p pack if any of these is true:
+- `getprop ro.config.low_ram` says `true`;
+- `MemTotal` in `/proc/meminfo` is under 1,600,000 kB (about 1.5 GB of RAM; good TVs have 2 GB or more);
+- less than about 1 GB of storage is free: `df -k /data` shows under 1,000,000 kB available.
+
+It runs smoothly on a 1 GB TV, takes 49 MB instead of 109 MB, and leaves memory and space for the apps.
+
 ```bash
 PACK=glass-home-wallpapers.zip            # or glass-home-wallpapers-1080p.zip, from wm size above
 mkdir -p wallpapers/tv
