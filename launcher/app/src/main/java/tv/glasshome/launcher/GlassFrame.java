@@ -42,6 +42,8 @@ public class GlassFrame extends FrameLayout {
     private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint smoke = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint layer = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint dim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private int dimKey = Integer.MIN_VALUE, dimValue;
     private final Matrix matrix = new Matrix();
     private final RectF rect = new RectF();
     private final RectF tmp = new RectF();
@@ -106,6 +108,38 @@ public class GlassFrame extends FrameLayout {
         showRing = show;
     }
 
+    /**
+     * How much to darken: the average brightness of the blurred wallpaper under this pane, sampled on a small
+     * grid, mapped to a tint (none below 40% brightness, up to about 50% black for a white sky). Cached until
+     * the wallpaper frame changes or the pane moves.
+     */
+    private int dimAlpha() {
+        if (blur == null || blur.isRecycled()) return 0;
+        getLocationInWindow(loc);
+        int key = generation * 31 + (loc[0] / 16) * 7919 + (loc[1] / 16) * 104729 + (int) insetTop;
+        if (key == dimKey) return dimValue;
+        dimKey = key;
+        float bx = blur.getWidth() / (float) screenW, by = blur.getHeight() / (float) screenH;
+        float w = getWidth() * getScaleX(), h = (getHeight() - insetTop) * getScaleY();
+        float top = loc[1] + insetTop * getScaleY();
+        double sum = 0;
+        int n = 0;
+        for (int iy = 0; iy < 4; iy++) {
+            for (int ix = 0; ix < 8; ix++) {
+                int x = Math.round((loc[0] + w * (ix + 0.5f) / 8) * bx);
+                int y = Math.round((top + h * (iy + 0.5f) / 4) * by);
+                if (x < 0 || y < 0 || x >= blur.getWidth() || y >= blur.getHeight()) continue;
+                int c = blur.getPixel(x, y);
+                sum += 0.2126 * (c >> 16 & 0xFF) + 0.7152 * (c >> 8 & 0xFF) + 0.0722 * (c & 0xFF);
+                n++;
+            }
+        }
+        float lum = n == 0 ? 0 : (float) (sum / n / 255.0);
+        float t = Math.max(0f, Math.min(1f, (lum - 0.40f) / 0.40f));
+        dimValue = Math.round(t * 128);
+        return dimValue;
+    }
+
     @Override
     protected void onFocusChanged(boolean gained, int direction, Rect previous) {
         super.onFocusChanged(gained, direction, previous);
@@ -153,6 +187,13 @@ public class GlassFrame extends FrameLayout {
         }
         canvas.drawRoundRect(rect, radius, radius, veil);
         canvas.drawRoundRect(rect, radius, radius, sheen);
+        // Over a bright wallpaper (sunrise, sunset, daylight) the white text would vanish: darken the glass
+        // in proportion to how bright the picture behind it is. Dark wallpapers get no tint at all.
+        int a = dimAlpha();
+        if (a > 0) {
+            dim.setColor(a << 24 | 0x0A0E14);
+            canvas.drawRoundRect(rect, radius, radius, dim);
+        }
         canvas.drawRoundRect(rect, radius, radius, rim);
         if (showRing && isFocused()) {
             float h = ring.getStrokeWidth() / 2;

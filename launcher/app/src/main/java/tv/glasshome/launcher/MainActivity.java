@@ -333,7 +333,7 @@ public class MainActivity extends Activity {
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(color);
         t.setTypeface(Typeface.create(font, Typeface.NORMAL));
-        t.setShadowLayer(px(5), 0, px(1), 0x55000000);
+        t.setShadowLayer(px(6), 0, px(1), 0x80000000); // keeps white text readable over bright glass
         t.setIncludeFontPadding(false);
         return t;
     }

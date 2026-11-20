@@ -18,3 +18,8 @@ wallpapers/tv/
 wallpapers/*.mp4
 wallpapers/*.mov
 .DS_Store
+
+# Launch-video material and output (/brag): local only.
+brag-assets/
+brag-output/
+brag-output-*/
