@@ -45,11 +45,13 @@ everything else works and Trending says a key is missing.
 
 ## Wallpapers
 
-The twelve ready-made clips (47 MB, already looped and sized for the TV) are a download on the
-[Releases page](https://github.com/diganta-svnit/Clean-TV---Glass-Launcher/releases). The agent fetches them for you.
+The twelve ready-made clips, already looped and sized for the TV, are a download on the
+[Releases page](https://github.com/diganta-svnit/Clean-TV---Glass-Launcher/releases), in two packs: **720p** (49 MB)
+for TVs whose home screen runs at 1280×720, and **1080p** (109 MB) for Full HD and 4K TVs. The agent checks your TV and
+fetches the right one. (4K TVs draw their home screen at 1080p, so 1080p is the sharpest a launcher can show.)
 
 To use your own clips: [wallpapers/README.md](wallpapers/README.md) lists the twelve slots and what makes a
-good clip, and `wallpapers/convert.sh` turns any clips into seamless 720p loops with their poster frames.
+good clip, and `wallpapers/convert.sh` turns any clips into seamless 720p loops (or 1080p with `RES=1080`) with their poster frames.
 
 ## Requirements
 

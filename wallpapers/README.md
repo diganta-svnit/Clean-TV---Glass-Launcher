@@ -1,8 +1,8 @@
 # Wallpaper clips
 
-Ready-made clips: download `glass-home-wallpapers.zip` from the [Releases page](https://github.com/diganta-svnit/Clean-TV---Glass-Launcher/releases) (PROMPT.md step 6 does it for you).
+Ready-made clips: download `glass-home-wallpapers.zip` (720p) or `glass-home-wallpapers-1080p.zip` (Full HD and 4K TVs) from the [Releases page](https://github.com/diganta-svnit/Clean-TV---Glass-Launcher/releases) (PROMPT.md step 6 does it for you).
 
-To use your own, save clips under the names below in one folder, then run `wallpapers/convert.sh <folder>` (needs ffmpeg; set `FFMPEG=` to point at one that isn't on the PATH). It writes `<folder>/tv/`: a seamless 720p loop, a poster and a blurred poster for each clip. Push that folder's files to `/sdcard/Android/data/tv.glasshome.launcher/files/wallpapers/`.
+To use your own, save clips under the names below in one folder, then run `wallpapers/convert.sh <folder>` (needs ffmpeg; set `FFMPEG=` to point at one that isn't on the PATH). It writes `<folder>/tv/`: a seamless 720p loop (with `RES=1080` in front: 1080p, in `<folder>/tv1080/`), a poster and a blurred poster for each clip. Push that folder's files to `/sdcard/Android/data/tv.glasshome.launcher/files/wallpapers/`.
 
 Mist and windy weather use the cloudy clip of that time of day. A missing clip falls back to that time of day's clear clip, then to `day-clear`.
 

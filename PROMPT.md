@@ -98,23 +98,33 @@ Undo any of them with `appops set … default` or `pm revoke …`.
 
 ## 6. Wallpapers
 
-Open Glass Home once (step 5 did), so its folder exists. Then download the ready clips from this repo's latest
-release and copy them over:
+Open Glass Home once (step 5 did), so its folder exists. The release has two packs of the same twelve clips:
+
+| Pack | For | Size |
+|---|---|---|
+| `glass-home-wallpapers.zip` | TVs whose home screen runs at 1280×720 | ~49 MB |
+| `glass-home-wallpapers-1080p.zip` | Full HD and 4K TVs (their home screen runs at 1920×1080) | ~109 MB |
+
+Pick by the home screen's size, not the panel's: `tv.py "wm size"` prints `Physical size` and, if set, `Override
+size`; use the override when there is one. Width 1920 or more: the 1080p pack. Otherwise: the 720p pack. A 4K
+panel usually reports 1920×1080 here, because Android TV draws its home screen at 1080p; the 1080p pack is the
+sharpest the launcher can show on it, and 4K clips would only cost decoding power.
 
 ```bash
+PACK=glass-home-wallpapers.zip            # or glass-home-wallpapers-1080p.zip, from wm size above
 mkdir -p wallpapers/tv
-curl -L -o wallpapers/glass-home-wallpapers.zip \
-  https://github.com/diganta-svnit/Clean-TV---Glass-Launcher/releases/latest/download/glass-home-wallpapers.zip
-unzip -o wallpapers/glass-home-wallpapers.zip -d wallpapers/tv
+curl -L -o "wallpapers/$PACK" \
+  "https://github.com/diganta-svnit/Clean-TV---Glass-Launcher/releases/latest/download/$PACK"
+unzip -o "wallpapers/$PACK" -d wallpapers/tv
 for f in wallpapers/tv/*; do
   $P -I cleanyourtv/tools/b64push.py "$f" "/sdcard/Android/data/tv.glasshome.launcher/files/wallpapers/$(basename "$f")"
 done
 ```
 
-Check the release's SHA-256 against the one in its notes before unzipping. Each clip is three files: the loop
-(`.mp4`), its first frame (`.jpg`) and a blurred frame (`-blur.jpg`). Press Home; the wallpaper appears within a
-minute. If the person brings their own clips, run `wallpapers/convert.sh <folder>` (needs ffmpeg) and push the
-`tv/` folder it makes instead.
+Check the pack's SHA-256 against the one in the release notes before unzipping. Each clip is three files: the
+loop (`.mp4`), its first frame (`.jpg`) and a blurred frame (`-blur.jpg`). Press Home; the wallpaper appears within
+a minute. If the person brings their own clips, run `wallpapers/convert.sh <folder>` (needs ffmpeg; add `RES=1080`
+in front for a 1080p TV) and push the `tv/` (or `tv1080/`) folder it makes instead.
 
 ## 7. Check it on the TV
 
