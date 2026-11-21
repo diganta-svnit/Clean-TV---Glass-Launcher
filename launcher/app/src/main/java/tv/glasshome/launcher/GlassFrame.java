@@ -61,6 +61,12 @@ public class GlassFrame extends FrameLayout {
     private float gradTop = -1, gradBottom = -1;
     private int stackLayers;
     private boolean showRing = true;
+    /**
+     * How solid the frosted backdrop is. Below 255 the real wallpaper shows faintly through the frost, which makes
+     * the blur read as glass rather than a milky slab. Menus that can sit over app tiles stay solid (setSolid).
+     */
+    static final int CLEAR = 158, SOLID = 255;
+    private int frost = CLEAR;
 
     public GlassFrame(Context c) {
         super(c);
@@ -107,6 +113,12 @@ public class GlassFrame extends FrameLayout {
     /** Collapsed-stack look: this many thinner cards peeking out above the top edge. */
     void setStackLayers(int n) {
         stackLayers = n;
+        invalidate();
+    }
+
+    /** Solid frost for panes that can cover other UI (menus): tiles behind them would show through otherwise. */
+    void setSolid(boolean solid) {
+        frost = solid ? SOLID : CLEAR;
         invalidate();
     }
 
@@ -159,11 +171,18 @@ public class GlassFrame extends FrameLayout {
         rect.set(0, insetTop, getWidth(), getHeight());
         if (rect.height() <= 1) return;
 
-        for (int i = stackLayers; i >= 1; i--) {
-            float inset = 18 * dp * i, lift = 8 * dp * i;
-            tmp.set(rect.left + inset, rect.top - lift, rect.right - inset, rect.top - lift + radius * 2);
-            canvas.drawRoundRect(tmp, radius, radius, layer);
-            canvas.drawRoundRect(tmp, radius, radius, rim);
+        if (stackLayers > 0) {
+            // The cards peeking out above the pane: only the part above its top edge is drawn, or the clearer
+            // glass would show their outlines through the pane.
+            canvas.save();
+            canvas.clipRect(rect.left, rect.top - 8 * dp * stackLayers - 2 * dp, rect.right, rect.top + 1.5f * dp);
+            for (int i = stackLayers; i >= 1; i--) {
+                float inset = 18 * dp * i, lift = 8 * dp * i;
+                tmp.set(rect.left + inset, rect.top - lift, rect.right - inset, rect.top - lift + radius * 2);
+                canvas.drawRoundRect(tmp, radius, radius, layer);
+                canvas.drawRoundRect(tmp, radius, radius, rim);
+            }
+            canvas.restore();
         }
 
         if (blur != null) {
@@ -179,6 +198,7 @@ public class GlassFrame extends FrameLayout {
             matrix.setScale(bx / s, by / getScaleY());
             matrix.postTranslate(-loc[0] / s, -loc[1] / getScaleY());
             glass.getShader().setLocalMatrix(matrix);
+            glass.setAlpha(frost);
             canvas.drawRoundRect(rect, radius, radius, glass);
         } else {
             canvas.drawRoundRect(rect, radius, radius, smoke);
@@ -187,9 +207,11 @@ public class GlassFrame extends FrameLayout {
         if (gradTop != rect.top || gradBottom != rect.bottom) {
             gradTop = rect.top;
             gradBottom = rect.bottom;
-            veil.setShader(new LinearGradient(0, rect.top, 0, rect.bottom, 0x33FFFFFF, 0x12FFFFFF, Shader.TileMode.CLAMP));
+            boolean clear = frost < SOLID;
+            veil.setShader(new LinearGradient(0, rect.top, 0, rect.bottom, clear ? 0x21FFFFFF : 0x33FFFFFF,
+                    clear ? 0x0CFFFFFF : 0x12FFFFFF, Shader.TileMode.CLAMP));
             sheen.setShader(new LinearGradient(0, rect.top, 0, rect.top + Math.min(rect.height() * 0.5f, 60 * dp),
-                    0x38FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+                    clear ? 0x24FFFFFF : 0x38FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
         }
         canvas.drawRoundRect(rect, radius, radius, veil);
         canvas.drawRoundRect(rect, radius, radius, sheen);

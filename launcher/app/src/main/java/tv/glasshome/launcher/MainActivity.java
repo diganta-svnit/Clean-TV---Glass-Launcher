@@ -624,6 +624,7 @@ public class MainActivity extends Activity {
 
     private View buildMenu() {
         menu = pane();
+        menu.setSolid(true); // menus can sit over the app tray: keep their frost solid so tiles don't show through
         menu.setRadius(px(24));
         menu.setShowRing(false);
         menuBox = new LinearLayout(this);
