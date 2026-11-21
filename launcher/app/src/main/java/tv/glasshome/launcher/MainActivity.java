@@ -167,6 +167,16 @@ public class MainActivity extends Activity {
         }
     };
 
+    /** An app was installed, removed, updated, enabled or disabled: refresh the tray and All apps at once. */
+    private final BroadcastReceiver packages = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            ui.removeCallbacks(reloadApps);
+            ui.postDelayed(reloadApps, 400); // one refresh for a burst of changes (an update sends several)
+        }
+    };
+    private final Runnable reloadApps = this::loadApps;
+
     @Override
     protected void attachBaseContext(Context base) {
         // The launcher is always in English, whatever the TV's language.
@@ -194,6 +204,12 @@ public class MainActivity extends Activity {
         langIndex = Math.max(0, Arrays.asList(LANG_CODES).indexOf(lang));
         images = new Images(this);
         setContentView(build());
+        IntentFilter pf = new IntentFilter(Intent.ACTION_PACKAGE_ADDED);
+        pf.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        pf.addAction(Intent.ACTION_PACKAGE_CHANGED);
+        pf.addAction(Intent.ACTION_PACKAGE_REPLACED);
+        pf.addDataScheme("package");
+        registerReceiver(packages, pf);
         String cached = prefs.getString("weather", null);
         if (cached != null) {
             try {
@@ -260,6 +276,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        try {
+            unregisterReceiver(packages);
+        } catch (RuntimeException ignored) {
+        }
+        ui.removeCallbacks(reloadApps);
         io.shutdownNow();
     }
 
