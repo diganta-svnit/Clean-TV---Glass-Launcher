@@ -222,6 +222,8 @@ public class MainActivity extends Activity {
         }
         showWeather();
         updateWallpaper();
+        // Glass tracks for every wallpaper clip (built once each, in the background; see GlassTrack).
+        wall.prepareAll(getExternalFilesDir("wallpapers"));
         fetchWeather();
         tiles[0].requestFocus();
         homePressed = true; // re-focus Netflix once the window has focus (Android may restore another view)

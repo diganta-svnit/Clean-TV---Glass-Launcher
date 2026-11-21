@@ -32,5 +32,10 @@ for f in "$SRC"/*.mp4; do
    -profile:v high -g 60 -movflags +faststart "$OUT/$n.mp4"
   "$FF" -hide_banner -loglevel error -y -i "$OUT/$n.mp4" -frames:v 1 -q:v 3 "$OUT/$n.jpg"
   "$FF" -hide_banner -loglevel error -y -i "$OUT/$n.jpg" -vf "scale=320:180,gblur=sigma=8,scale=1280:720:flags=bicubic" -q:v 4 "$OUT/$n-blur.jpg"
+  # Glass track: every frame shrunk to 160x90 and blurred, as back-to-back JPEGs, named after the clip's size.
+  # The launcher shows it in step with the video, so the glass moves smoothly without copying frames off the GPU.
+  rm -f "${OUT:?}/${n:?}"-[0-9]*.glass
+  size=$(wc -c < "$OUT/$n.mp4" | tr -d ' ')
+  "$FF" -hide_banner -loglevel error -y -i "$OUT/$n.mp4" -vf "scale=160:90:flags=area,gblur=sigma=4.5" -q:v 5 -f mjpeg "$OUT/$n-$size.glass"
 done
 ls -la "$OUT"; du -sh "$OUT"

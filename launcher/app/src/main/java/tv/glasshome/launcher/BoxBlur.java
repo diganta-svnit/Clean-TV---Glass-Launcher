@@ -8,6 +8,35 @@ final class BoxBlur {
     private BoxBlur() {
     }
 
+    /**
+     * Blurs into the same buffers every time, for the live glass (up to 30 times a second): nothing is created per
+     * frame, so there are no old copies to clean up and no garbage-collection pauses. Use from one thread only.
+     */
+    static final class Reusable {
+        private final int w, h;
+        private final int[] a, b;
+        final Bitmap out;
+
+        Reusable(int w, int h) {
+            this.w = w;
+            this.h = h;
+            a = new int[w * h];
+            b = new int[w * h];
+            out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        }
+
+        /** Blurs src (w × h) into out and returns out (the same bitmap every time). */
+        Bitmap blur(Bitmap src, int radius, int passes) {
+            src.getPixels(a, 0, w, 0, 0, w, h);
+            for (int p = 0; p < passes; p++) {
+                pass(a, b, w, h, radius, true);
+                pass(b, a, w, h, radius, false);
+            }
+            out.setPixels(a, 0, w, 0, 0, w, h);
+            return out;
+        }
+    }
+
     static Bitmap blur(Bitmap src, int radius, int passes) {
         int w = src.getWidth(), h = src.getHeight();
         int[] a = new int[w * h], b = new int[w * h];

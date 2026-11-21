@@ -29,11 +29,17 @@ public class GlassFrame extends FrameLayout {
 
     /** Sets the blurred wallpaper every pane samples from; null falls back to a plain smoked fill. */
     static void setBlur(Bitmap b, int w, int h) {
+        // The live glass passes the same bitmap with new pixels up to 30 times a second: keep its shader (the GPU
+        // re-uploads the changed pixels by itself); only a different bitmap object needs a new shader.
+        if (b != blur) bitmapGen++;
         blur = b;
         screenW = w;
         screenH = h;
         generation++;
     }
+
+    /** Bumped only when the blur bitmap object changes; panes rebuild their shader then, not on every frame. */
+    private static int bitmapGen;
 
     private final Paint glass = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Paint veil = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -161,9 +167,9 @@ public class GlassFrame extends FrameLayout {
         }
 
         if (blur != null) {
-            if (shaderGen != generation) {
+            if (shaderGen != bitmapGen) {
                 glass.setShader(new BitmapShader(blur, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP));
-                shaderGen = generation;
+                shaderGen = bitmapGen;
             }
             // Where this pane is on screen right now (translation and scale included), mapped back into the
             // small blurred bitmap. The launcher window is full screen, so window = screen coordinates.

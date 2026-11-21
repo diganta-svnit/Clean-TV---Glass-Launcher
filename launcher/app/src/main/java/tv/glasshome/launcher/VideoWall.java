@@ -14,9 +14,13 @@ import android.widget.ImageView;
 import java.io.File;
 
 /**
- * The moving wallpaper: a looping, silent 720p clip on a TextureView, with its poster frame on top until the first
- * video frame is drawn (and while a new clip loads). While it plays, a small frame is grabbed every 1.5 s and blurred
- * for the glass; when paused, one fresh frame is grabbed so the glass matches the frozen picture exactly.
+ * The moving wallpaper: a looping, silent clip on a TextureView, with its poster frame on top until the first video
+ * frame is drawn (and while a new clip loads).
+ *
+ * The glass follows the video with the clip's GlassTrack: its frames, prepared once, small and blurred, shown in step
+ * with the video (up to 30 a second) from one reused bitmap. A clip without a track yet gets one built in the
+ * background the first time it plays; until then, and on Android 8, the glass copies a frame from the video every
+ * 1.5 s instead (copying more often stalls the GPU on budget TVs). When paused, the glass shows the frozen frame.
  */
 final class VideoWall implements TextureView.SurfaceTextureListener {
 
@@ -24,27 +28,38 @@ final class VideoWall implements TextureView.SurfaceTextureListener {
         void onBlur(Bitmap blurred);
     }
 
-    private static final int GRAB_W = 160, GRAB_H = 90, GRAB_MS = 1500;
+    private static final int GRAB_W = 160, GRAB_H = 90;
+    /** Glass refresh: up to 30 a second from a glass track; every 1.5 s when it has to copy from the video. */
+    static final long GLASS_MS = 33, COPY_MS = 1500;
 
     private final TextureView texture;
     private final ImageView poster;
     private final BlurSink sink;
     private final Handler ui = new Handler(Looper.getMainLooper());
+    private final Context ctx;
+    private GlassTrack track;
+    private volatile File trackFor, allDir;
+    private volatile boolean builtAll;
+    private final java.util.concurrent.ExecutorService builder = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(() -> {
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
+            r.run();
+        }, "glass-track");
+        t.setDaemon(true);
+        return t;
+    });
     private MediaPlayer player;
     private Surface surface;
     private File video;
     private boolean prepared, rendering, wantPlay = true, fadeOnFrame;
-
-    private final Runnable grabLoop = new Runnable() {
-        @Override
-        public void run() {
-            grab();
-            if (wantPlay && rendering) ui.postDelayed(this, GRAB_MS);
-        }
-    };
+    private long lastGrab;
+    // Reused for every glass refresh: the frame copy and the blurred result.
+    private final Bitmap grabBuf = Bitmap.createBitmap(GRAB_W, GRAB_H, Bitmap.Config.ARGB_8888);
+    private final BoxBlur.Reusable blurBuf = new BoxBlur.Reusable(GRAB_W, GRAB_H);
 
     VideoWall(Context c, FrameLayout root, BlurSink sink) {
         this.sink = sink;
+        ctx = c.getApplicationContext();
         texture = new TextureView(c);
         texture.setSurfaceTextureListener(this);
         texture.setOpaque(true);
@@ -72,13 +87,11 @@ final class VideoWall implements TextureView.SurfaceTextureListener {
     void setPlaying(boolean play) {
         if (play == wantPlay) return;
         wantPlay = play;
-        ui.removeCallbacks(grabLoop);
         if (player == null || !prepared) return;
         if (play) {
             player.start();
             // If the poster is covering the screen (we came back paused), lift it once a new frame is drawn.
             if (poster.getAlpha() > 0f) fadeOnFrame = true;
-            ui.postDelayed(grabLoop, GRAB_MS);
         } else {
             player.pause();
             // The frame on screen is now fixed: one grab makes the glass match it.
@@ -88,7 +101,6 @@ final class VideoWall implements TextureView.SurfaceTextureListener {
 
     /** Activity went to the background: free the decoder; the poster covers the screen until playback is back. */
     void stop() {
-        ui.removeCallbacks(grabLoop);
         release();
         poster.animate().cancel();
         poster.setAlpha(1f);
@@ -100,6 +112,7 @@ final class VideoWall implements TextureView.SurfaceTextureListener {
 
     private void start(File clip) {
         video = clip;
+        if (clip != null && !clip.equals(trackFor)) loadTrack(clip);
         release();
         if (clip == null || !clip.isFile() || surface == null) return;
         MediaPlayer mp = new MediaPlayer();
@@ -125,8 +138,6 @@ final class VideoWall implements TextureView.SurfaceTextureListener {
                     } else {
                         poster.animate().cancel();
                         poster.animate().alpha(0f).setDuration(700).withEndAction(null).start();
-                        ui.removeCallbacks(grabLoop);
-                        ui.postDelayed(grabLoop, 200);
                     }
                 }
                 return false;
@@ -156,10 +167,63 @@ final class VideoWall implements TextureView.SurfaceTextureListener {
         }
     }
 
+    /** Loads the clip's glass track, building it first (in the background) if it doesn't exist yet. */
+    private void loadTrack(File clip) {
+        track = null;
+        trackFor = clip;
+        builder.execute(() -> {
+            if (!clip.equals(trackFor)) return;
+            File f = GlassTrack.fileFor(ctx, clip);
+            GlassTrack t = GlassTrack.load(f);
+            if (t == null && clip.isFile() && GlassTrack.build(clip, f, () -> !clip.equals(trackFor))) {
+                t = GlassTrack.load(f);
+            }
+            GlassTrack done = t;
+            if (done != null) ui.post(() -> {
+                if (clip.equals(trackFor)) track = done;
+            });
+            buildAll(); // then every other clip without a track, once
+        });
+    }
+
+    /**
+     * Queues glass tracks for every clip in the folder (after the one playing), so any wallpaper is smooth when picked,
+     * and deletes tracks whose clip is gone or changed. Clips added later are handled the same way the next time.
+     */
+    void prepareAll(File dir) {
+        allDir = dir;
+        if (trackFor == null) builder.execute(this::buildAll); // nothing playing yet: start right away
+    }
+
+    /** Runs on the builder thread after the clip on screen has its track. */
+    private void buildAll() {
+        File dir = allDir;
+        if (dir == null || builtAll) return;
+        builtAll = true;
+        File[] clips = dir.listFiles((d, n) -> n.endsWith(".mp4"));
+        if (clips == null) return;
+        java.util.List<File> keep = new java.util.ArrayList<>();
+        for (File clip : clips) keep.add(GlassTrack.fileFor(ctx, clip));
+        GlassTrack.prune(ctx, dir, keep);
+        for (File clip : clips) {
+            File f = GlassTrack.fileFor(ctx, clip);
+            if (!f.isFile()) GlassTrack.build(clip, f, () -> false);
+        }
+    }
+
     private void grab() {
+        if (track != null && player != null && prepared) {
+            try {
+                sink.onBlur(track.frameAt(player.getCurrentPosition(), player.getDuration()));
+                return;
+            } catch (IllegalStateException ignored) {
+                // The player is changing state: copy from the video this once.
+            }
+        }
         if (!rendering || !texture.isAvailable()) return;
-        Bitmap b = texture.getBitmap(GRAB_W, GRAB_H);
-        if (b != null) sink.onBlur(BoxBlur.blur(b, 4, 3));
+        // Copies the current frame into the reused buffer (scaled to 160×90 by the GPU), then blurs it in place.
+        Bitmap b = texture.getBitmap(grabBuf);
+        if (b != null) sink.onBlur(blurBuf.blur(b, 4, 3));
     }
 
     @Override
@@ -174,7 +238,6 @@ final class VideoWall implements TextureView.SurfaceTextureListener {
 
     @Override
     public boolean onSurfaceTextureDestroyed(SurfaceTexture st) {
-        ui.removeCallbacks(grabLoop);
         release();
         if (surface != null) surface.release();
         surface = null;
@@ -183,6 +246,12 @@ final class VideoWall implements TextureView.SurfaceTextureListener {
 
     @Override
     public void onSurfaceTextureUpdated(SurfaceTexture st) {
+        // A new video frame: refresh the glass from it, at most 30 times a second.
+        long now = android.os.SystemClock.uptimeMillis();
+        if (wantPlay && rendering && now - lastGrab >= (track != null ? GLASS_MS : COPY_MS)) {
+            lastGrab = now;
+            grab();
+        }
         if (fadeOnFrame && wantPlay) {
             fadeOnFrame = false;
             poster.animate().cancel();

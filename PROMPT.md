@@ -103,8 +103,8 @@ Open Glass Home once (step 5 did), so its folder exists. The release has two pac
 
 | Pack | For | Size |
 |---|---|---|
-| `glass-home-wallpapers.zip` | TVs whose home screen runs at 1280×720 | ~49 MB |
-| `glass-home-wallpapers-1080p.zip` | Full HD and 4K TVs (their home screen runs at 1920×1080) | ~109 MB |
+| `glass-home-wallpapers.zip` | TVs whose home screen runs at 1280×720 | ~54 MB |
+| `glass-home-wallpapers-1080p.zip` | Full HD and 4K TVs (their home screen runs at 1920×1080) | ~114 MB |
 
 Pick by the home screen's size, not the panel's: `tv.py "wm size"` prints `Physical size` and, if set, `Override
 size`; use the override when there is one. Width 1920 or more: the 1080p pack. Otherwise: the 720p pack. A 4K
@@ -129,8 +129,8 @@ for f in wallpapers/tv/*; do
 done
 ```
 
-Check the pack's SHA-256 against the one in the release notes before unzipping. Each clip is three files: the
-loop (`.mp4`), its first frame (`.jpg`) and a blurred frame (`-blur.jpg`). Press Home; the wallpaper appears within
+Check the pack's SHA-256 against the one in the release notes before unzipping. Each clip is four files: the
+loop (`.mp4`), its first frame (`.jpg`), a blurred frame (`-blur.jpg`) and its glass track (`-<size>.glass`). Press Home; the wallpaper appears within
 a minute. If the person brings their own clips, run `wallpapers/convert.sh <folder>` (needs ffmpeg; add `RES=1080`
 in front for a 1080p TV) and push the `tv/` (or `tv1080/`) folder it makes instead.
 

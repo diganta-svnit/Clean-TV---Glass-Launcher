@@ -2,7 +2,9 @@
 
 Ready-made clips: download `glass-home-wallpapers.zip` (720p) or `glass-home-wallpapers-1080p.zip` (Full HD and 4K TVs) from the [Releases page](https://github.com/diganta-svnit/Clean-TV---Glass-Launcher/releases) (PROMPT.md step 6 does it for you).
 
-To use your own, save clips under the names below in one folder, then run `wallpapers/convert.sh <folder>` (needs ffmpeg; set `FFMPEG=` to point at one that isn't on the PATH). It writes `<folder>/tv/`: a seamless 720p loop (with `RES=1080` in front: 1080p, in `<folder>/tv1080/`), a poster and a blurred poster for each clip. Push that folder's files to `/sdcard/Android/data/tv.glasshome.launcher/files/wallpapers/`.
+To use your own, save clips under the names below in one folder, then run `wallpapers/convert.sh <folder>` (needs ffmpeg; set `FFMPEG=` to point at one that isn't on the PATH). It writes `<folder>/tv/`: a seamless 720p loop (with `RES=1080` in front: 1080p, in `<folder>/tv1080/`), a poster, a blurred poster and a glass track (`<name>-<size>.glass`: every frame tiny and blurred, so the glass moves smoothly with the video) for each clip. Push that folder's files to `/sdcard/Android/data/tv.glasshome.launcher/files/wallpapers/`.
+
+A clip without a glass track still works: the TV builds one in the background the first time it plays (slowly, once), and the glass refreshes every 1.5 s until it is ready.
 
 Mist and windy weather use the cloudy clip of that time of day. A missing clip falls back to that time of day's clear clip, then to `day-clear`.
 

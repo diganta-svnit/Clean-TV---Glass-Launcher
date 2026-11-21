@@ -11,7 +11,8 @@ behind them, your streaming apps one press away, and what's trending on the apps
 - **Live wallpaper.** Twelve looping clips (morning, day, evening, night × clear, cloudy, rain). The launcher
   picks one from the real sunrise and sunset and the current weather where you live, and changes it as the day
   goes on. You can pin any clip in Settings, and go back to automatic with one press.
-- **Glass everywhere.** Every panel samples a blurred copy of the wallpaper under it, also while it moves.
+- **Glass everywhere.** Every panel samples a blurred copy of the wallpaper under it, also while it moves, and
+  follows the video frame by frame (up to 30 a second) using a small prepared "glass track" for each clip.
 - **Clock and weather** at the top right (Open-Meteo, ECMWF forecast, no account needed). Pick any city in
   Settings with a search.
 - **Tray.** Your six main apps and All apps. Press Down for seven more, picked by how much you use them.
@@ -50,8 +51,8 @@ everything else works and Trending says a key is missing.
 ## Wallpapers
 
 The twelve ready-made clips, already looped and sized for the TV, are a download on the
-[Releases page](https://github.com/diganta-svnit/Clean-TV---Glass-Launcher/releases), in two packs: **720p** (49 MB)
-for TVs whose home screen runs at 1280×720, and **1080p** (109 MB) for Full HD and 4K TVs. The agent checks your TV and
+[Releases page](https://github.com/diganta-svnit/Clean-TV---Glass-Launcher/releases), in two packs: **720p** (54 MB)
+for TVs whose home screen runs at 1280×720, and **1080p** (114 MB) for Full HD and 4K TVs. The agent checks your TV and
 fetches the right one; budget TVs (about 1.5 GB of RAM or less, or under 1 GB of free storage) keep the 720p pack. (4K TVs draw their home screen at 1080p, so 1080p is the sharpest a launcher can show.)
 
 To use your own clips: [wallpapers/README.md](wallpapers/README.md) lists the twelve slots and what makes a
