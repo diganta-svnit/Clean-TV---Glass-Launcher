@@ -232,6 +232,7 @@ public class MainActivity extends Activity {
         f.addAction(Intent.ACTION_TIMEZONE_CHANGED);
         registerReceiver(tick, f);
         showTime();
+        VolumeService.sync(this);
         loadApps();
         updateWallpaper();
         if (System.currentTimeMillis() - weatherAt > 30 * 60 * 1000L) fetchWeather();
@@ -1347,6 +1348,21 @@ public class MainActivity extends Activity {
             prefs.edit().putBoolean("googleSearch", !google).apply();
             Toast.makeText(this, google ? "Find with Google hidden"
                     : "Find with Google shown (needs Google Assistant set up on the TV)", Toast.LENGTH_LONG).show();
+            openSettings();
+        });
+        boolean volumeLight = prefs.getBoolean(VolumeService.PREF, true);
+        boolean canOverlay = Settings.canDrawOverlays(this);
+        rows.add(new String[]{"Volume light", !canOverlay ? "Needs permission" : volumeLight ? "On" : "Off"});
+        actions.add(() -> {
+            if (!canOverlay) {
+                Toast.makeText(this, "Allow it over ADB: appops set tv.glasshome.launcher SYSTEM_ALERT_WINDOW allow",
+                        Toast.LENGTH_LONG).show();
+            } else {
+                prefs.edit().putBoolean(VolumeService.PREF, !volumeLight).apply();
+                VolumeService.sync(this);
+                Toast.makeText(this, volumeLight ? "Volume light off" : "Volume light on: change the volume to see it",
+                        Toast.LENGTH_SHORT).show();
+            }
             openSettings();
         });
         rows.add(new String[]{"Refresh Trending", null});

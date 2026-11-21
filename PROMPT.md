@@ -92,6 +92,7 @@ Optional extras, each one a single command. Tell the person what each one is for
 |---|---|---|
 | Usage access | "Frequently used" apps in the tray and recent apps in Continue watching | `appops set tv.glasshome.launcher GET_USAGE_STATS allow` |
 | TV listings | Netflix's own Continue watching card (exact episode) | `pm grant tv.glasshome.launcher android.permission.READ_TV_LISTINGS` |
+| Display over other apps | The volume light (a streak of light shown on volume changes, over any app) | `appops set tv.glasshome.launcher SYSTEM_ALERT_WINDOW allow` |
 | DUMP (developer permission) | What was last playing, for TVs that refuse notification access | `pm grant tv.glasshome.launcher android.permission.DUMP` |
 
 Undo any of them with `appops set … default` or `pm revoke …`.

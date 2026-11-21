@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
     <!-- Uninstall from an app tile's menu: Android asks the person to confirm every time. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Volume light: drawn over other apps. Granted over ADB: appops set tv.glasshome.launcher SYSTEM_ALERT_WINDOW allow -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- What was playing, on low-RAM TVs that refuse notification listeners: lets the launcher read the system's
          media-session report. Developer permission, granted over ADB: pm grant tv.glasshome.launcher android.permission.DUMP -->
     <uses-permission android:name="android.permission.DUMP"
@@ -69,5 +72,9 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+        <!-- The volume light: listens for volume changes and draws a streak of light over any app. -->
+        <service
+            android:name=".VolumeService"
+            android:exported="false" />
     </application>
 </manifest>

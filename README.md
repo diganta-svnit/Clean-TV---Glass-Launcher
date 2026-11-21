@@ -19,6 +19,10 @@ behind them, your streaming apps one press away, and what's trending on the apps
   one language, as a Films row and a Series row. Select a title for where to watch it and its trailer.
 - **Continue watching.** Netflix's own "continue watching" card (the exact episode), what was last playing,
   and the video apps you used recently.
+- **Volume light.** Change the volume and a streak of light rises or falls along the right edge of the screen,
+  over any app, with a lens-flare head, a light trail and the level beside it; mute dims it to an ember. It
+  also works when the sound goes to a soundbar over HDMI ARC, where Android TV hides its own volume bar.
+  Switch it off in Settings.
 - **Hold OK on any app** for Open, Uninstall and App info.
 - **Inputs** (HDMI and Live TV) and **Settings** pills at the top left. The interface is in English.
 

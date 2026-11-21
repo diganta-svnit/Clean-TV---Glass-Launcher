@@ -10,8 +10,8 @@ android {
         applicationId 'tv.glasshome.launcher'
         minSdk 26
         targetSdk 34
-        versionCode 7
-        versionName '0.7'
+        versionCode 8
+        versionName '0.8'
         // TMDB read token from tmdb_key.txt next to this folder (never committed). Empty: Trending says a key is missing.
         def keyFile = rootProject.file('../tmdb_key.txt')
         def key = keyFile.exists() ? keyFile.text.trim() : ''
